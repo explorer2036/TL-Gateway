@@ -1,0 +1,12 @@
+server:
+  listen: ":15001" # the admin entrypoint for prometheus and pprof
+
+fusion:
+  api_key: "Kc-ntFUr767Qyk0RgbVU8dxLLdjmTM98_XjsAZxOajA" # api key for authorizing the user token
+  api_url: "http://209.222.106.245:9011/" # api url for authorizing the user token
+  timeout: 5 # timeout for requesting the fusion api
+
+kafka:
+  brokers: ["192.168.0.4:9092"] # the kafka brokers
+  topic: "TL-Trader" # the kafka topic
+  
