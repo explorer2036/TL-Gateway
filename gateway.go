@@ -22,8 +22,11 @@ import (
 )
 
 const (
+	// defaultFustionTimeout defines the default timeout for http request every time
 	defaultFustionTimeout = 5
-	Success               = 0
+
+	// Success for grpc requests
+	Success = 0
 )
 
 // ReportService is used to implement gateway.ReportService.

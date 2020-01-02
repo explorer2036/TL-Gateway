@@ -1,1 +1,4 @@
 gateway
+tools/collector/collector
+tools/consumer/consumer
+tools/fusion/fusion
