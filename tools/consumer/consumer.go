@@ -49,6 +49,8 @@ func (g *groupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim s
 }
 
 func main() {
+	flag.Parse()
+
 	// new a sarama config for consumer group
 	config := sarama.NewConfig()
 	config.Version = sarama.V1_0_0_0

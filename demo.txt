@@ -1,0 +1,46 @@
+### create the topic: "TL-Trader"
+
+./kafka-topics.sh --zookeeper $zookeeper:2181 --create --topic TL-Trader --partitions 30  --replication-factor 1
+
+
+### start the binary: gateway
+
+1. update the config.yml
+
+server:
+  listen: ":15001" # the admin entrypoint for prometheus and pprof
+
+fusion:
+  api_key: "Kc-ntFUr767Qyk0RgbVU8dxLLdjmTM98_XjsAZxOajA" # api key for authorizing the user token
+  api_url: "http://209.222.106.245:9011/" # api url for authorizing the user token
+  timeout: 5 # timeout for requesting the fusion api
+
+kafka:
+  brokers: ["192.168.0.4:9092"] # the kafka brokers          --- attention
+  topic: "TL-Trader" # the kafka topic                       --- create the kafka topic(don't change name)
+
+2. start the gateway application
+$ ./gateway
+
+
+### start the consumer: consumer
+
+Usage of ./consumer:
+  -a string
+    the grpc server address (default "192.168.0.4:9092")   --- the gateway address
+
+$ ./consumer -a $gateway_address
+
+
+### start the collector: collector
+
+Usage of ./collector:
+  -a string
+    the grpc server address (default "localhost:15001")
+  -c int
+    the count of records (default -1)
+  -f int
+    the collect frequency(ms) (default 500)
+
+$ ./collector -c 100000 -f 100
+  
