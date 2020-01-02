@@ -27,9 +27,9 @@ $ ./gateway
 
 Usage of ./consumer:
   -a string
-    the grpc server address (default "192.168.0.4:9092")   --- the gateway address
+    the kafka brokers (default "192.168.0.4:9092")
 
-$ ./consumer -a $gateway_address
+$ ./consumer -a $kafka_brokers
 
 
 ### start the collector: collector
