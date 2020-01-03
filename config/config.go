@@ -16,7 +16,8 @@ type fusionStruct struct {
 
 // server fields
 type serverStruct struct {
-	Address string `yaml:"listen"`
+	ListenAddr string `yaml:"listen_addr"`
+	AdminAddr  string `yaml:"admin_addr"`
 }
 
 // kafka fields

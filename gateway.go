@@ -3,6 +3,8 @@ package main
 import (
 	"TL-Gateway/config"
 	"TL-Gateway/kafka"
+	"TL-Gateway/server"
+	"TL-Proto/gateway"
 	"context"
 	"errors"
 	"fmt"
@@ -14,8 +16,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"TL-Proto/gateway"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
 	"google.golang.org/grpc"
@@ -128,10 +128,15 @@ func main() {
 
 	var wg sync.WaitGroup
 	// start a server with listen address
-	grpcServer, err := startServer(settings.Server.Address, serivce, &wg)
+	grpcServer, err := startServer(settings.Server.ListenAddr, serivce, &wg)
 	if err != nil {
 		panic(err)
 	}
+
+	// start the http server
+	httpServer := server.NewServer(&settings)
+	httpServer.Start(&wg)
+
 	fmt.Println("server is started")
 
 	sig := make(chan os.Signal, 1024)
@@ -142,8 +147,10 @@ func main() {
 		case s := <-sig:
 			fmt.Printf("receive signal: %v\n", s)
 
-			// close the server gracefully
+			// close the grpc server gracefully
 			grpcServer.GracefulStop()
+			// close the http server gracefully
+			httpServer.Stop()
 
 			// wait for server goroutine exit first
 			wg.Wait()
