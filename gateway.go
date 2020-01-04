@@ -3,8 +3,8 @@ package main
 import (
 	"TL-Gateway/config"
 	"TL-Gateway/kafka"
+	"TL-Gateway/proto/gateway"
 	"TL-Gateway/server"
-	"TL-Proto/gateway"
 	"context"
 	"errors"
 	"fmt"
