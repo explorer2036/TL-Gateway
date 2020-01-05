@@ -35,6 +35,7 @@ func main() {
 	// login the fusion to fetch token
 	token := login()
 
+	fmt.Printf("token: %v\n", token)
 	// validate the token
 	result, err := auth.ValidateJWT(token)
 	if err != nil {

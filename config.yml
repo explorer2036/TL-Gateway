@@ -1,6 +1,6 @@
 server:
-  listen_addr: ":15001" # the grpc listen address
-  admin_addr: ":8000" # the admin entrypoint for prometheus and pprof
+  listen_addr: "0.0.0.0:15001" # the grpc listen address
+  admin_addr: "0.0.0.0:8000" # the admin entrypoint for prometheus and pprof
 
 fusion:
   api_key: "Kc-ntFUr767Qyk0RgbVU8dxLLdjmTM98_XjsAZxOajA" # api key for authorizing the user token

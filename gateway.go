@@ -19,6 +19,7 @@ import (
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 const (
@@ -28,6 +29,11 @@ const (
 	// Success for grpc requests
 	Success = 0
 )
+
+var kaep = keepalive.EnforcementPolicy{
+	MinTime:             5 * time.Second, // If a client pings more than once every 5 seconds, terminate the connection
+	PermitWithoutStream: true,            // Allow pings even when there are no active streams
+}
 
 // ReportService is used to implement gateway.ReportService.
 type ReportService struct {
@@ -99,7 +105,9 @@ func startServer(addr string, rs *ReportService, wg *sync.WaitGroup) (*grpc.Serv
 	if err != nil {
 		return nil, err
 	}
-	s := grpc.NewServer()
+
+	// must support the keepalive
+	s := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(kaep))
 	gateway.RegisterReportServiceServer(s, rs)
 
 	wg.Add(1)

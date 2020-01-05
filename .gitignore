@@ -1,6 +1,8 @@
 TL-Gateway
 TL-Gateway.exe
-gateway
 tools/collector/collector
+tools/collector/collector.exe
 tools/consumer/consumer
+tools/consumer/consumer.exe
 tools/fusion/fusion
+tools/fusion/fusion.exe
