@@ -1,0 +1,26 @@
+# Network Trace:
+#     {
+#         "source": "fund-falconfund-nyc-mt4-5",
+#         "path": "alpari-brokerage.metatrader.app.trade.network.latency",
+#         "data": {"type": "ipv4",
+#             "trace": "alpari.london.trade.api -w 2000",
+#             "hop": 0,
+#             "host": "alpari.london.trade.api [217.192.86.32]",
+#             "latency": "5ms"},
+#         "time": 15990932023
+#     }
+fixed_columns: ["source", "path", "time"]
+relations:
+  - dtype: "data_trace"
+    table: "trace"
+    columns: ["type", "trace", "hop", "host", "latency"]
+# CREATE TABLE trace (
+# 			  source VARCHAR(100) NOT NULL,
+# 			  path VARCHAR(200) NOT NULL,
+#         type VARCHAR(20) NOT NULL,
+#         trace VARCHAR(100) NOT NULL,
+#         hop BOOLEAN NOT NULL,
+#         host VARCHAR(100) NOT NULL,
+#         latency INT NOT NULL,
+# 			  time TIMESTAMPTZ  NOT NULL,
+# 			);
