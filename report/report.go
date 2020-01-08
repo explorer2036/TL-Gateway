@@ -10,7 +10,31 @@ import (
 	"time"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
+	"github.com/prometheus/client_golang/prometheus"
 )
+
+var (
+	totalCollectedCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "total_collected_count",
+		Help: "The total count of messages collected by grpc server",
+	})
+
+	totalRefusedCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "total_refused_count",
+		Help: "The total count of messages refused by fusion auth",
+	})
+
+	totalBlockedCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "total_blocked_count",
+		Help: "The total count of messages blocked by kafka",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(totalCollectedCount)
+	prometheus.MustRegister(totalRefusedCount)
+	prometheus.MustRegister(totalBlockedCount)
+}
 
 const (
 	// DefaultFustionTimeout defines the default timeout for http request every time
@@ -78,18 +102,24 @@ func (s *Service) validate(token string) (bool, error) {
 // Report implements gateway.ReportService
 func (s *Service) Report(ctx context.Context, request *gateway.ReportRequest) (*gateway.ReportReply, error) {
 	// validate the token
-	// ok, err := s.validate(request.Token)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// if !ok {
-	// 	return &gateway.ReportReply{Status: ErrorAuthorization}, nil
-	// }
+	ok, err := s.validate(request.Token)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		// update the refused metric
+		totalRefusedCount.Add(1)
+		return &gateway.ReportReply{Status: ErrorAuthorization}, nil
+	}
 
 	// send data to buffer queue
 	select {
 	case s.stream <- request.Data:
+		// update the collected metric
+		totalCollectedCount.Add(1)
 	default:
+		// update the blocked metric
+		totalBlockedCount.Add(1)
 		return &gateway.ReportReply{Status: ErrorKafka}, nil
 	}
 

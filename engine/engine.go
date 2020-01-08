@@ -8,7 +8,25 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
+
+var (
+	totalConsumedCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "total_consumed_count",
+		Help: "The total count of messages consumed to kafka",
+	})
+
+	totalSendFailedCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "total_send_failed_count",
+		Help: "The total count of messages sending failed to kafka",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(totalConsumedCount)
+}
 
 const (
 	// DefaultNumberOfRoutines - number of the goroutines, for sending messages to kafka
@@ -70,10 +88,14 @@ func (e *Engine) send(data []byte) {
 			fmt.Printf("send messages: %v\n", err)
 
 			// update the metrics
+			totalSendFailedCount.Add(1)
 
 			time.Sleep(DefaultRetryTime * time.Second)
 			continue
 		}
+
+		// update the consumed metric
+		totalConsumedCount.Add(1)
 
 		break
 	}

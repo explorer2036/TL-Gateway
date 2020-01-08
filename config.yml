@@ -1,6 +1,6 @@
 server:
   listen_addr: "0.0.0.0:15001" # the grpc listen address
-  admin_addr: "0.0.0.0:8000" # the admin entrypoint for prometheus and pprof
+  admin_addr: "0.0.0.0:8002" # the admin entrypoint for prometheus and pprof
 
 cache:
   routines: 2 # number of the goroutines, for sending messages to kafka
