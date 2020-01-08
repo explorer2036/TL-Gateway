@@ -2,6 +2,11 @@ server:
   listen_addr: "0.0.0.0:15001" # the grpc listen address
   admin_addr: "0.0.0.0:8000" # the admin entrypoint for prometheus and pprof
 
+cache:
+  routines: 2 # number of the goroutines, for sending messages to kafka
+  buffer: 1024 # queue size for goroutines which is responsible for sending kafka(default 100)
+  delay_time: 2 # waiting for reading channel when receive exit signals(default 2s)
+
 fusion:
   api_key: "Kc-ntFUr767Qyk0RgbVU8dxLLdjmTM98_XjsAZxOajA" # api key for authorizing the user token
   api_url: "http://209.222.106.245:9011/" # api url for authorizing the user token
@@ -10,4 +15,3 @@ fusion:
 kafka:
   brokers: ["192.168.0.4:9092"] # the kafka brokers
   topic: "TL-Trader" # the kafka topic
-  

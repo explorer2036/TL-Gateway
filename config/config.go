@@ -20,6 +20,13 @@ type serverStruct struct {
 	AdminAddr  string `yaml:"admin_addr"`
 }
 
+// cache fields
+type cacheStruct struct {
+	Routines  int           `yaml:"routines"`
+	Buffer    int           `yaml:"buffer"`
+	DelayTime time.Duration `yaml:"delay_time"`
+}
+
 // kafka fields
 type kafkaStruct struct {
 	Brokers []string `yaml:"brokers"`
@@ -30,6 +37,7 @@ type kafkaStruct struct {
 type Config struct {
 	Fusion fusionStruct `yaml:"fusion"`
 	Server serverStruct `yaml:"server"`
+	Cache  cacheStruct  `yaml:"cache"`
 	Kafka  kafkaStruct  `yaml:"kafka"`
 }
 
