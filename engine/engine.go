@@ -26,6 +26,7 @@ var (
 
 func init() {
 	prometheus.MustRegister(totalConsumedCount)
+	prometheus.MustRegister(totalSendFailedCount)
 }
 
 const (
