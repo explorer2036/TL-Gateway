@@ -73,6 +73,7 @@ type NetworkTrace struct {
 	Source string    `json:"source"`
 	Path   string    `json:"path"`
 	Kind   string    `json:"dtype"`
+	Action string    `json:"action"`
 	Data   TraceData `json:"data"`
 	Time   string    `json:"time"`
 }
@@ -80,6 +81,7 @@ type NetworkTrace struct {
 func newNetworkTrace(i int) []byte {
 	trace := &NetworkTrace{
 		Kind:   "data_trace",
+		Action: "insert",
 		Source: "fund-falconfund-nyc-mt4-5-" + strconv.Itoa(i),
 		Path:   "alpari-brokerage.metatrader.app.trade.network.latency",
 		Data: TraceData{
@@ -90,8 +92,7 @@ func newNetworkTrace(i int) []byte {
 			Latency: 10,
 			Value:   2.99792458e8,
 		},
-		// Time: "2015-01-12 12:45:00.345+08",
-		Time: "2015-01-12 12:45:01",
+		Time: "2015-01-12 12:45:00.345+08",
 	}
 
 	b, _ := json.Marshal(&trace)
