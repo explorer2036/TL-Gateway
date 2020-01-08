@@ -87,6 +87,7 @@ golang.org/x/text/transform
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.26.0
 google.golang.org/grpc
+google.golang.org/grpc/keepalive
 google.golang.org/grpc/codes
 google.golang.org/grpc/status
 google.golang.org/grpc/backoff
@@ -110,7 +111,6 @@ google.golang.org/grpc/internal/grpcsync
 google.golang.org/grpc/internal/resolver/dns
 google.golang.org/grpc/internal/resolver/passthrough
 google.golang.org/grpc/internal/transport
-google.golang.org/grpc/keepalive
 google.golang.org/grpc/metadata
 google.golang.org/grpc/naming
 google.golang.org/grpc/peer
