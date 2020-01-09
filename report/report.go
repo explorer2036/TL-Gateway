@@ -5,15 +5,29 @@ import (
 	"TL-Gateway/model"
 	"TL-Gateway/proto/gateway"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
+	"github.com/go-redis/redis"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
+	totalFusionErrorCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "total_fusion_error_coutn",
+		Help: "The total count of fusion error from server",
+	})
+
+	totalRedisErrorCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "total_redis_error_count",
+		Help: "The total count of redis error from server",
+	})
+
 	totalCollectedCount = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "total_collected_count",
 		Help: "The total count of messages collected by grpc server",
@@ -24,16 +38,18 @@ var (
 		Help: "The total count of messages refused by fusion auth",
 	})
 
-	totalBlockedCount = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "total_blocked_count",
-		Help: "The total count of messages blocked by kafka",
+	totalTimeoutCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "total_timeout_count",
+		Help: "The total count of messages writeing timeout",
 	})
 )
 
 func init() {
+	prometheus.MustRegister(totalFusionErrorCount)
+	prometheus.MustRegister(totalRedisErrorCount)
 	prometheus.MustRegister(totalCollectedCount)
 	prometheus.MustRegister(totalRefusedCount)
-	prometheus.MustRegister(totalBlockedCount)
+	prometheus.MustRegister(totalTimeoutCount)
 }
 
 const (
@@ -41,19 +57,15 @@ const (
 	DefaultFustionTimeout = 5
 	// DefaultStreamBuffer - queue size for goroutines which is responsible for sending kafka(default 100)
 	DefaultStreamBuffer = 10240
-
-	// Success for grpc requests
-	Success = 0
-	// ErrorAuthorization for token validation
-	ErrorAuthorization = 1
-	// ErrorKafka for writing buffer queue
-	ErrorKafka = 2
+	// DefaultWriteTimeout - the timeout for writing the messages to queue
+	DefaultWriteTimeout = 2
 )
 
 // Service represents the interfaces for gateway
 type Service struct {
 	gateway.UnimplementedReportServiceServer
 
+	redisClient  *redis.Client                // redis client for token
 	fusionClient *fusionauth.FusionAuthClient // fusion client for validate the token
 	settings     *config.Config               // settings for the gateway
 	stream       chan model.Carrier           // stream for buffering messages
@@ -66,6 +78,18 @@ func NewService(settings *config.Config) *Service {
 	}
 
 	s := &Service{settings: settings}
+
+	// init the redis connection
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     settings.Redis.Addr,
+		Password: settings.Redis.Passwd, // no password
+		DB:       settings.Redis.DB,     // use default DB
+	})
+	// try to ping the redis server
+	if err := redisClient.Ping().Err(); err != nil {
+		panic(err)
+	}
+	s.redisClient = redisClient
 
 	// init the fusion client
 	s.fusionClient = s.newFusionClient()
@@ -90,13 +114,54 @@ func (s *Service) newFusionClient() *fusionauth.FusionAuthClient {
 	return fusionauth.NewClient(client, host, s.settings.Fusion.APIKey)
 }
 
+// md5 the token
+func (s *Service) md5Sum(data string) string {
+	h := md5.New()
+	h.Write([]byte(data))
+
+	return hex.EncodeToString(h.Sum(nil))
+}
+
 // validate the token for every requests
 func (s *Service) validate(token string) (bool, error) {
-	result, err := s.fusionClient.ValidateJWT(token)
+	// md5 the token
+	md5Token := s.md5Sum(token)
+
+	// check if the md5 token is existed from redis first
+	existed, err := s.redisClient.Exists(md5Token).Result()
 	if err != nil {
-		return false, err
+		// update the metric: redis error count
+		totalRedisErrorCount.Add(1)
+		return true, err
 	}
-	return result.StatusCode == 200, nil
+	// if the token is existed
+	if existed > 0 {
+		return true, nil
+	}
+
+	// if the key is not existed, check the token from fusion auth server
+	verify, err := s.fusionClient.ValidateJWT(token)
+	if err != nil {
+		return true, err
+	}
+	// access token is not valid
+	if verify.StatusCode == 401 {
+		return false, nil
+	}
+	if verify.StatusCode == 500 {
+		// update the metric: fusion error count
+		totalFusionErrorCount.Add(1)
+		return true, nil
+	}
+
+	expire := time.Duration(verify.Jwt.Exp - time.Now().Unix() + 1)
+	// set the token to redis with expire time
+	if _, err := s.redisClient.Set(md5Token, "ok", expire*time.Second).Result(); err != nil {
+		totalRedisErrorCount.Add(1)
+		return true, err
+	}
+
+	return true, nil
 }
 
 // Report implements gateway.ReportService
@@ -104,26 +169,30 @@ func (s *Service) Report(ctx context.Context, request *gateway.ReportRequest) (*
 	// validate the token
 	ok, err := s.validate(request.Token)
 	if err != nil {
-		return nil, err
+		// just log the error
+		fmt.Printf("validate token: %v\n", err)
 	}
 	if !ok {
 		// update the refused metric
 		totalRefusedCount.Add(1)
-		return &gateway.ReportReply{Status: ErrorAuthorization}, nil
+		return &gateway.ReportReply{Status: gateway.Status_Refused}, nil
 	}
 
+	timeout := s.settings.Server.Timeout
 	// send data to buffer queue
 	select {
 	case s.stream <- request.Data:
 		// update the collected metric
 		totalCollectedCount.Add(1)
-	default:
-		// update the blocked metric
-		totalBlockedCount.Add(1)
-		return &gateway.ReportReply{Status: ErrorKafka}, nil
+
+	case <-time.After(time.Second * timeout):
+		// update the timeout metric
+		totalTimeoutCount.Add(1)
+
+		return &gateway.ReportReply{Status: gateway.Status_Timeout}, nil
 	}
 
-	return &gateway.ReportReply{Status: Success}, nil
+	return &gateway.ReportReply{Status: gateway.Status_Success}, nil
 }
 
 // ReadMessages returns the messages from channel

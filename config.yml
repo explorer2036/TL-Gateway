@@ -1,6 +1,7 @@
 server:
   listen_addr: "0.0.0.0:15001" # the grpc listen address
   admin_addr: "0.0.0.0:8002" # the admin entrypoint for prometheus and pprof
+  timeout: 2 # the timeout for writing the messages to queue
 
 cache:
   routines: 2 # number of the goroutines, for sending messages to kafka
@@ -15,3 +16,8 @@ fusion:
 kafka:
   brokers: ["192.168.0.4:9092"] # the kafka brokers
   topic: "TL-Trader" # the kafka topic
+
+redis:
+  passwd: "" # empty if no passwd set for redis
+  addr: "192.168.0.13:6379" # the address for redis
+  db: 0 # 0 - the default db of redis
