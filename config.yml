@@ -19,5 +19,5 @@ kafka:
 
 redis:
   passwd: "" # empty if no passwd set for redis
-  addr: "192.168.0.13:6379" # the address for redis
+  addr: "192.168.0.4:6379" # the address for redis
   db: 0 # 0 - the default db of redis
