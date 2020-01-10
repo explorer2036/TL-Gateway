@@ -4,8 +4,8 @@ server:
   timeout: 2 # the timeout for writing the messages to queue
 
 cache:
-  routines: 2 # number of the goroutines, for sending messages to kafka
-  buffer: 1024 # queue size for goroutines which is responsible for sending kafka(default 100)
+  routines: 20 # number of the goroutines, for sending messages to kafka(default 10)
+  buffer: ‭1048576‬ # queue size for goroutines which is responsible for sending kafka(default 1M)
   delay_time: 2 # waiting for reading channel when receive exit signals(default 2s)
 
 fusion:

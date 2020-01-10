@@ -100,6 +100,8 @@ func main() {
 			// close the http server gracefully
 			httpServer.Stop()
 
+			fmt.Printf("server is stopped\n")
+
 			// cancel the goroutines which is responsible for sending messages to kafka
 			cancel()
 

@@ -30,8 +30,8 @@ func init() {
 }
 
 const (
-	// DefaultNumberOfRoutines - number of the goroutines, for sending messages to kafka
-	DefaultNumberOfRoutines = 2
+	// DefaultNumberOfRoutines - number of the goroutines, for sending messages to kafka(default 10)
+	DefaultNumberOfRoutines = 10
 	// DefaultDelayTime - waiting for reading channel when receive exit signals(default 2s)
 	DefaultDelayTime = 2
 	// DefaultRetryTime - retry time seconds when sending messages to kafka happens error

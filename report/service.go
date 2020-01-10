@@ -55,8 +55,8 @@ func init() {
 const (
 	// DefaultFustionTimeout defines the default timeout for http request every time
 	DefaultFustionTimeout = 5
-	// DefaultStreamBuffer - queue size for goroutines which is responsible for sending kafka(default 100)
-	DefaultStreamBuffer = 10240
+	// DefaultStreamBuffer - queue size for goroutines which is responsible for sending kafka(default 1M)
+	DefaultStreamBuffer = 1024 * 1024
 	// DefaultWriteTimeout - the timeout for writing the messages to queue
 	DefaultWriteTimeout = 2
 	// DefaultCacheExpireTime - the default expire time for local cache
