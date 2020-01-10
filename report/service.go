@@ -2,12 +2,12 @@ package report
 
 import (
 	"TL-Gateway/config"
+	"TL-Gateway/log"
 	"TL-Gateway/model"
 	"TL-Gateway/proto/gateway"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
-	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -156,7 +156,7 @@ func (s *Service) Report(ctx context.Context, request *gateway.ReportRequest) (*
 	ok, err := s.validate(request.Token)
 	if err != nil {
 		// just log the error
-		fmt.Printf("validate token: %v\n", err)
+		log.Infof("validate token: %v", err)
 	}
 	if !ok {
 		// update the refused metric

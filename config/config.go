@@ -34,12 +34,24 @@ type kafkaStruct struct {
 	Topic   string   `yaml:"topic"`
 }
 
+// log fields
+type logStruct struct {
+	OutputLevel        string `yaml:"output_level"`
+	OutputPath         string `yaml:"output_path"`
+	RotationPath       string `yaml:"rotation_path"`
+	RotationMaxSize    int    `yaml:"rotation_max_size"`
+	RotationMaxAge     int    `yaml:"rotation_max_age"`
+	RotationMaxBackups int    `yaml:"rotation_max_backups"`
+	JSONEncoding       bool   `yaml:"json_encoding"`
+}
+
 // Config structure for server
 type Config struct {
 	Fusion fusionStruct `yaml:"fusion"`
 	Server serverStruct `yaml:"server"`
 	Cache  cacheStruct  `yaml:"cache"`
 	Kafka  kafkaStruct  `yaml:"kafka"`
+	Log    logStruct    `yaml:"log"`
 }
 
 // ParseYamlFile the config file

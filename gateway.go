@@ -4,11 +4,11 @@ import (
 	"TL-Gateway/config"
 	"TL-Gateway/engine"
 	"TL-Gateway/kafka"
+	"TL-Gateway/log"
 	"TL-Gateway/proto/gateway"
 	"TL-Gateway/report"
 	"TL-Gateway/server"
 	"context"
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -45,17 +45,44 @@ func startGRPCServer(settings *config.Config, rs *report.Service, wg *sync.WaitG
 	go func() {
 		defer wg.Done()
 		if err := s.Serve(lis); err != nil {
-			fmt.Printf("grpc serve: %v\n", err)
+			log.Infof("grpc serve: %v\n", err)
 		}
 	}()
 
 	return s, nil
 }
 
+// updateOptions updates the log options
+func updateOptions(scope string, options *log.Options, settings *config.Config) error {
+	options.RotateOutputPath = settings.Log.RotationPath
+	options.RotationMaxBackups = settings.Log.RotationMaxBackups
+	options.RotationMaxSize = settings.Log.RotationMaxSize
+	options.RotationMaxAge = settings.Log.RotationMaxAge
+	options.JSONEncoding = settings.Log.JSONEncoding
+	level, err := options.ConvertLevel(settings.Log.OutputLevel)
+	if err != nil {
+		return err
+	}
+	options.SetOutputLevel(scope, level)
+	options.SetLogCallers(scope, true)
+
+	return nil
+}
+
 func main() {
 	var settings config.Config
 	// parse the config file
 	if err := config.ParseYamlFile("config.yml", &settings); err != nil {
+		panic(err)
+	}
+
+	// init and update the log options
+	logOptions := log.DefaultOptions()
+	if err := updateOptions("default", logOptions, &settings); err != nil {
+		panic(err)
+	}
+	// configure the log options
+	if err := log.Configure(logOptions); err != nil {
 		panic(err)
 	}
 
@@ -83,7 +110,7 @@ func main() {
 	httpServer := server.NewServer(&settings)
 	httpServer.Start(&wg)
 
-	fmt.Println("gateway is started")
+	log.Info("gateway is started")
 
 	sig := make(chan os.Signal, 1024)
 	// subscribe signals: SIGINT & SINGTERM
@@ -91,7 +118,7 @@ func main() {
 	for {
 		select {
 		case s := <-sig:
-			fmt.Printf("receive signal: %v\n", s)
+			log.Infof("receive signal: %v", s)
 
 			start := time.Now()
 
@@ -100,7 +127,7 @@ func main() {
 			// close the http server gracefully
 			httpServer.Stop()
 
-			fmt.Printf("server is stopped\n")
+			log.Info("server is stopped")
 
 			// cancel the goroutines which is responsible for sending messages to kafka
 			cancel()
@@ -111,7 +138,7 @@ func main() {
 			// release the hard resources
 			producer.Close()
 
-			fmt.Printf("shut down takes time: %v\n", time.Now().Sub(start))
+			log.Infof("shut down takes time: %v", time.Now().Sub(start))
 			return
 		}
 	}

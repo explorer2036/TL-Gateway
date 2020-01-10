@@ -3,9 +3,9 @@ package engine
 import (
 	"TL-Gateway/config"
 	"TL-Gateway/kafka"
+	"TL-Gateway/log"
 	"TL-Gateway/report"
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -86,8 +86,6 @@ func (e *Engine) send(data []byte) {
 	for {
 		// try to send data to kafka
 		if err := e.producer.Send(data); err != nil {
-			fmt.Printf("send messages: %v\n", err)
-
 			// update the metrics
 			totalSendFailedCount.Add(1)
 
@@ -121,7 +119,7 @@ func (e *Engine) handle(ctx context.Context, wg *sync.WaitGroup) {
 			// try to handle the left data
 			for {
 				if e.afterCare() == false {
-					fmt.Println("engine goroutine exit")
+					log.Info("engine goroutine exit")
 					return
 				}
 			}
@@ -142,5 +140,5 @@ func (e *Engine) IsReady() {
 	for i := 0; i < e.settings.Cache.Routines; i++ {
 		<-e.ready
 	}
-	fmt.Println("engine goroutines are ready")
+	log.Info("engine goroutines are ready")
 }
