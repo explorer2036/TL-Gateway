@@ -5,7 +5,7 @@ server:
 
 cache:
   routines: 20 # number of the goroutines, for sending messages to kafka(default 10)
-  buffer: ‭1048576‬ # queue size for goroutines which is responsible for sending kafka(default 1M)
+  buffer: 1048576 # queue size for goroutines which is responsible for sending kafka(default 1M)
   delay_time: 2 # waiting for reading channel when receive exit signals(default 2s)
 
 fusion:
