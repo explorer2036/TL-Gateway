@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
-	"github.com/go-redis/redis"
+	gcache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -59,13 +59,17 @@ const (
 	DefaultStreamBuffer = 10240
 	// DefaultWriteTimeout - the timeout for writing the messages to queue
 	DefaultWriteTimeout = 2
+	// DefaultCacheExpireTime - the default expire time for local cache
+	DefaultCacheExpireTime = 30
+	// DefaultCacheCleanTime - the default clean time for local cache
+	DefaultCacheCleanTime = 60
 )
 
 // Service represents the interfaces for gateway
 type Service struct {
 	gateway.UnimplementedReportServiceServer
 
-	redisClient  *redis.Client                // redis client for token
+	cache        *gcache.Cache                // local cache for token
 	fusionClient *fusionauth.FusionAuthClient // fusion client for validate the token
 	settings     *config.Config               // settings for the gateway
 	stream       chan model.Carrier           // stream for buffering messages
@@ -79,17 +83,8 @@ func NewService(settings *config.Config) *Service {
 
 	s := &Service{settings: settings}
 
-	// init the redis connection
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     settings.Redis.Addr,
-		Password: settings.Redis.Passwd, // no password
-		DB:       settings.Redis.DB,     // use default DB
-	})
-	// try to ping the redis server
-	if err := redisClient.Ping().Err(); err != nil {
-		panic(err)
-	}
-	s.redisClient = redisClient
+	// init the local cache
+	s.cache = gcache.New(DefaultCacheExpireTime, DefaultCacheCleanTime)
 
 	// init the fusion client
 	s.fusionClient = s.newFusionClient()
@@ -127,15 +122,9 @@ func (s *Service) validate(token string) (bool, error) {
 	// md5 the token
 	md5Token := s.md5Sum(token)
 
-	// check if the md5 token is existed from redis first
-	existed, err := s.redisClient.Exists(md5Token).Result()
-	if err != nil {
-		// update the metric: redis error count
-		totalRedisErrorCount.Add(1)
-		return true, err
-	}
-	// if the token is existed
-	if existed > 0 {
+	// check if the md5 token is existed in local cache
+	if _, existed := s.cache.Get(md5Token); existed {
+		// if the token is existed
 		return true, nil
 	}
 
@@ -155,11 +144,8 @@ func (s *Service) validate(token string) (bool, error) {
 	}
 
 	expire := time.Duration(verify.Jwt.Exp - time.Now().Unix() + 1)
-	// set the token to redis with expire time
-	if _, err := s.redisClient.Set(md5Token, "ok", expire*time.Second).Result(); err != nil {
-		totalRedisErrorCount.Add(1)
-		return true, err
-	}
+	// set the token to local cache
+	s.cache.Set(md5Token, "ok", expire*time.Second)
 
 	return true, nil
 }

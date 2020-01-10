@@ -7,13 +7,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// redisStruct defines fields for redis
-type redisStruct struct {
-	Passwd string `yaml:"passwd"`
-	Addr   string `yaml:"addr"`
-	DB     int    `yaml:"db"`
-}
-
 // fusion fields
 type fusionStruct struct {
 	APIKey  string        `yaml:"api_key"`
@@ -47,7 +40,6 @@ type Config struct {
 	Server serverStruct `yaml:"server"`
 	Cache  cacheStruct  `yaml:"cache"`
 	Kafka  kafkaStruct  `yaml:"kafka"`
-	Redis  redisStruct  `yaml:"redis"`
 }
 
 // ParseYamlFile the config file
