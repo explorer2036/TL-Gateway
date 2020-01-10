@@ -120,6 +120,9 @@ func main() {
 		case s := <-sig:
 			log.Infof("receive signal: %v", s)
 
+			// flush the log
+			log.Sync()
+
 			start := time.Now()
 
 			// close the grpc server gracefully
