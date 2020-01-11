@@ -19,6 +19,10 @@ type serverStruct struct {
 	ListenAddr string        `yaml:"listen_addr"`
 	AdminAddr  string        `yaml:"admin_addr"`
 	Timeout    time.Duration `yaml:"timeout"`
+	TLSSwitch  bool          `yaml:"tls_switch"`
+	PermFile   string        `yaml:"tls_perm"`
+	KeyFile    string        `yaml:"tls_key"`
+	CaFile     string        `yaml:"tls_ca"`
 }
 
 // cache fields

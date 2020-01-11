@@ -2,6 +2,10 @@ server:
   listen_addr: "0.0.0.0:15001" # the grpc listen address
   admin_addr: "0.0.0.0:8002" # the admin entrypoint for prometheus and pprof
   timeout: 2 # the timeout for writing the messages to queue
+  tls_switch: false # the switch for the ca certification(default closed)
+  tls_perm: "cert/server.pem" # the perm file for ca certification in grpc server
+  tls_key: "cert/server.key" # the key file for ca certification in grpc server
+  tls_ca: "cert/ca.pem" # the ca file for ca certification in grpc server
 
 cache:
   routines: 20 # number of the goroutines, for sending messages to kafka(default 10)

@@ -9,12 +9,17 @@ import (
 	"TL-Gateway/report"
 	"TL-Gateway/server"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"google.golang.org/grpc/credentials"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -30,6 +35,30 @@ var kaep = keepalive.EnforcementPolicy{
 	PermitWithoutStream: true,                                  // Allow pings even when there are no active streams
 }
 
+// prepare the files for certification
+func createCredentials(settings *config.Config) credentials.TransportCredentials {
+	cert, err := tls.LoadX509KeyPair(settings.Server.PermFile, settings.Server.KeyFile)
+	if err != nil {
+		panic(err)
+	}
+
+	certPool := x509.NewCertPool()
+	ca, err := ioutil.ReadFile(settings.Server.CaFile)
+	if err != nil {
+		panic(err)
+	}
+
+	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+		panic("append certs from pem")
+	}
+
+	return credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    certPool,
+	})
+}
+
 // start a grpc server
 func startGRPCServer(settings *config.Config, rs *report.Service, wg *sync.WaitGroup) (*grpc.Server, error) {
 	lis, err := net.Listen("tcp", settings.Server.ListenAddr)
@@ -37,8 +66,15 @@ func startGRPCServer(settings *config.Config, rs *report.Service, wg *sync.WaitG
 		return nil, err
 	}
 
+	var s *grpc.Server
 	// must support the keepalive
-	s := grpc.NewServer(grpc.KeepaliveEnforcementPolicy(kaep))
+	if settings.Server.TLSSwitch {
+		// create credentials by loading the cert files
+		creds := createCredentials(settings)
+		s = grpc.NewServer(grpc.Creds(creds), grpc.KeepaliveEnforcementPolicy(kaep))
+	} else {
+		s = grpc.NewServer(grpc.KeepaliveEnforcementPolicy(kaep))
+	}
 	gateway.RegisterReportServiceServer(s, rs)
 
 	wg.Add(1)
