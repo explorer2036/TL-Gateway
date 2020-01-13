@@ -19,13 +19,8 @@ import (
 
 var (
 	totalFusionErrorCount = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "total_fusion_error_coutn",
+		Name: "total_fusion_error_count",
 		Help: "The total count of fusion error from server",
-	})
-
-	totalRedisErrorCount = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "total_redis_error_count",
-		Help: "The total count of redis error from server",
 	})
 
 	totalCollectedCount = prometheus.NewCounter(prometheus.CounterOpts{
@@ -46,7 +41,6 @@ var (
 
 func init() {
 	prometheus.MustRegister(totalFusionErrorCount)
-	prometheus.MustRegister(totalRedisErrorCount)
 	prometheus.MustRegister(totalCollectedCount)
 	prometheus.MustRegister(totalRefusedCount)
 	prometheus.MustRegister(totalTimeoutCount)
