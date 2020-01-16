@@ -4,7 +4,7 @@ import (
 	"TL-Gateway/config"
 	"TL-Gateway/kafka"
 	"TL-Gateway/log"
-	"TL-Gateway/report"
+	"TL-Gateway/service"
 	"context"
 	"sync"
 	"time"

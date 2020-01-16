@@ -40,17 +40,6 @@ func login() (string, string) {
 	return response.Token, response.RefreshToken
 }
 
-func retrieve(userid string) {
-	response, _, err := auth.RetrieveRefreshTokens(userid)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("token: %v\n", response.Token)
-	for _, token := range response.RefreshTokens {
-		fmt.Println(token)
-	}
-}
-
 // refresh the token
 func refresh(token string) string {
 	var refreshRequest fusionauth.RefreshRequest
@@ -90,5 +79,4 @@ func main() {
 	}
 	fmt.Printf("validate token: %v\n", result)
 
-	retrieve("alon@traderlinked.com")
 }

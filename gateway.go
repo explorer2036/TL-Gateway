@@ -6,7 +6,7 @@ import (
 	"TL-Gateway/kafka"
 	"TL-Gateway/log"
 	"TL-Gateway/proto/gateway"
-	"TL-Gateway/report"
+	"TL-Gateway/service"
 	"TL-Gateway/server"
 	"context"
 	"crypto/tls"
@@ -75,7 +75,7 @@ func startGRPCServer(settings *config.Config, rs *report.Service, wg *sync.WaitG
 	} else {
 		s = grpc.NewServer(grpc.KeepaliveEnforcementPolicy(kaep))
 	}
-	gateway.RegisterReportServiceServer(s, rs)
+	gateway.RegisterServiceServer(s, rs)
 
 	wg.Add(1)
 	go func() {
