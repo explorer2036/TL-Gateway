@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	// apiKey = "Kc-ntFUr767Qyk0RgbVU8dxLLdjmTM98_XjsAZxOajA"
-	apiKey     = "cIoPv09UNR2qhd4OrHDbq1x1qeHpZpumUMvIAuWO0no"
+	apiKey = "Kc-ntFUr767Qyk0RgbVU8dxLLdjmTM98_XjsAZxOajA"
+	// apiKey     = "cIoPv09UNR2qhd4OrHDbq1x1qeHpZpumUMvIAuWO0no"
 	baseURL, _ = url.Parse("http://209.222.106.245:9011/")
 	httpClient = &http.Client{Timeout: time.Second * 5}
 	auth       = fusionauth.NewClient(httpClient, baseURL, apiKey)

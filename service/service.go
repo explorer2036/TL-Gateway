@@ -107,11 +107,6 @@ func (s *Service) md5Sum(data string) string {
 
 // validate the token with the local cache
 func (s *Service) validateByCache(k string, v string) bool {
-	// // md5 the login + application as key
-	// key := s.md5Sum(login + application)
-	// // md5 the token as value
-	// value := s.md5Sum(token)
-
 	// check if the key is existed in local cache
 	if item, existed := s.cache.Get(k); existed {
 		// check if the value is valid
@@ -188,52 +183,6 @@ func (s *Service) Login(ctx context.Context, request *gateway.LoginRequest) (*ga
 	s.updateCache(k, v, expire)
 
 	return &gateway.LoginReply{
-		Status:       gateway.Status_Success,
-		Token:        response.Token,
-		RefreshToken: response.RefreshToken,
-		Expire:       expire,
-	}, nil
-}
-
-// fetch a new access token by refresh token from fusion
-func (s *Service) refresh(request *gateway.RefreshRequest) (*fusionauth.RefreshResponse, error) {
-	var refreshRequest fusionauth.RefreshRequest
-	refreshRequest.RefreshToken = request.RefreshToken
-
-	refreshReply, _, err := s.fusionClient.ExchangeRefreshTokenForJWT(refreshRequest)
-	if err != nil {
-		return nil, err
-	}
-	if refreshReply.StatusCode != 200 {
-		return nil, fmt.Errorf("http status code: %v", refreshReply.StatusCode)
-	}
-
-	return refreshReply, nil
-}
-
-// Report implements gateway.Service
-func (s *Service) Refresh(ctx context.Context, request *gateway.RefreshRequest) (*gateway.RefreshReply, error) {
-	// fetch a new access token from fusion
-	response, err := s.refresh(request)
-	if err != nil {
-		return &gateway.RefreshReply{Status: gateway.Status_Refused, Message: err.Error()}, nil
-	}
-
-	// login success, validate the token, and retrieve the expire time of the token
-	expire, err := s.validateByFusion(response.Token)
-	if err != nil {
-		return &gateway.RefreshReply{Status: gateway.Status_Refused, Message: err.Error()}, nil
-	}
-
-	// md5 the login + application as key
-	k := s.md5Sum(request.LoginId + request.ApplicationId)
-	// md5 the token as value
-	v := s.md5Sum(response.Token)
-
-	// update the token into local cache
-	s.updateCache(k, v, expire)
-
-	return &gateway.RefreshReply{
 		Status: gateway.Status_Success,
 		Token:  response.Token,
 		Expire: expire,
