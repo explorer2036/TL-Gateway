@@ -8,13 +8,16 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
 	gcache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc/peer"
 )
 
 var (
@@ -125,7 +128,7 @@ func (s *Service) validateByFusion(token string) (int64, error) {
 		return 0, err
 	}
 	if verify.StatusCode != 200 {
-		return 0, fmt.Errorf("http status code: %d", verify.StatusCode)
+		return 0, fmt.Errorf("status code: %d", verify.StatusCode)
 	}
 
 	return verify.Jwt.Exp, nil
@@ -139,13 +142,27 @@ func (s *Service) updateCache(k string, v string, expire int64) {
 
 }
 
+// retrieve the peer address
+func (s *Service) peerAddr(ctx context.Context) string {
+	v, ok := peer.FromContext(ctx)
+	if !ok {
+		return ""
+	}
+	if v.Addr == net.Addr(nil) {
+		return ""
+	}
+	addr := v.Addr.String()
+
+	return strings.Split(addr, ":")[0]
+}
+
 // login with the request fields
-func (s *Service) login(request *gateway.LoginRequest) (*fusionauth.LoginResponse, error) {
+func (s *Service) login(ctx context.Context, request *gateway.LoginRequest) (*fusionauth.LoginResponse, error) {
 	// prepare the login request
 	var loginRequest fusionauth.LoginRequest
 	loginRequest.LoginId = request.LoginId
 	loginRequest.Password = request.Password
-	loginRequest.IpAddress = request.IpAddress
+	loginRequest.IpAddress = s.peerAddr(ctx)
 	loginRequest.ApplicationId = request.ApplicationId
 
 	// login by fusion client
@@ -163,29 +180,14 @@ func (s *Service) login(request *gateway.LoginRequest) (*fusionauth.LoginRespons
 // Login implements gateway.Service
 func (s *Service) Login(ctx context.Context, request *gateway.LoginRequest) (*gateway.LoginReply, error) {
 	// login with fusion client
-	response, err := s.login(request)
+	response, err := s.login(ctx, request)
 	if err != nil {
 		return &gateway.LoginReply{Status: gateway.Status_Refused, Message: err.Error()}, nil
 	}
-
-	// login success, validate the token, and retrieve the expire time of the token
-	expire, err := s.validateByFusion(response.Token)
-	if err != nil {
-		return &gateway.LoginReply{Status: gateway.Status_Refused, Message: err.Error()}, nil
-	}
-
-	// md5 the login + application as key
-	k := s.md5Sum(request.LoginId + request.ApplicationId)
-	// md5 the token as value
-	v := s.md5Sum(response.Token)
-
-	// update the token into local cache
-	s.updateCache(k, v, expire)
 
 	return &gateway.LoginReply{
 		Status: gateway.Status_Success,
 		Token:  response.Token,
-		Expire: expire,
 	}, nil
 }
 
