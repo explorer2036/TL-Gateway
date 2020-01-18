@@ -155,7 +155,7 @@ func (s *Service) updateCache(k string, v string, expire int64) {
 		// set the token to redis cache
 		result := s.redisClient.Set(k, v, time.Duration(secs)*time.Second)
 		if result.Err() != nil {
-			log.Errorf("update the token %s: %v", v, result.Err())
+			log.Errorf("update the token: %v", result.Err())
 		}
 	}
 }
