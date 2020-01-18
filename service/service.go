@@ -85,6 +85,7 @@ func NewService(settings *config.Config) *Service {
 	if _, err := redisClient.Ping().Result(); err != nil {
 		panic(err)
 	}
+	s.redisClient = redisClient
 
 	// init the fusion client
 	s.fusionClient = s.newFusionClient()
@@ -122,7 +123,7 @@ func (s *Service) validateByCache(k string, v string) bool {
 	// check if the key is existed in redis cache
 	token, err := s.redisClient.Get(k).Result()
 	if err != nil {
-		log.Errorf("redis get %s: %v", s, err)
+		log.Errorf("redis get %s: %v", k, err)
 		return false
 	}
 	// check if the value is equal
@@ -208,8 +209,8 @@ func (s *Service) Login(ctx context.Context, request *gateway.LoginRequest) (*ga
 	}, nil
 }
 
-// Report implements gateway.Service
-func (s *Service) Report(ctx context.Context, request *gateway.ReportRequest) (*gateway.ReportReply, error) {
+// validate the token with login and application id
+func (s *Service) validate(request *gateway.ReportRequest) error {
 	// the login + application as key
 	k := request.LoginId + request.ApplicationId
 	// the token as value
@@ -217,18 +218,30 @@ func (s *Service) Report(ctx context.Context, request *gateway.ReportRequest) (*
 
 	// validate the token by cache
 	if ok := s.validateByCache(k, v); ok {
-		return &gateway.ReportReply{Status: gateway.Status_Success}, nil
+		return nil
 	}
+
 	// validate the token by fusion
-	expire, err := s.validateByFusion(request.Token)
+	expire, err := s.validateByFusion(v)
 	if err != nil {
+		return err
+	}
+
+	// update the local cache for the token
+	s.updateCache(k, v, expire)
+
+	return nil
+}
+
+// Report implements gateway.Service
+func (s *Service) Report(ctx context.Context, request *gateway.ReportRequest) (*gateway.ReportReply, error) {
+	// validate the token with login and application id
+	if err := s.validate(request); err != nil {
 		// update the metric: fusion refused count
 		totalRefusedCount.Add(1)
 
 		return &gateway.ReportReply{Status: gateway.Status_Refused, Message: err.Error()}, nil
 	}
-	// update the local cache for the token
-	s.updateCache(k, v, expire)
 
 	timeout := s.settings.Server.Timeout
 	// send data to buffer queue
