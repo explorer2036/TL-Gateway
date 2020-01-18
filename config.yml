@@ -8,7 +8,7 @@ server:
   tls_ca: "cert/ca.pem" # the ca file for ca certification in grpc server
 
 cache:
-  routines: 20 # number of the goroutines, for sending messages to kafka(default 10)
+  routines: 10 # number of the goroutines, for sending messages to kafka(default 10)
   buffer: 1048576 # queue size for goroutines which is responsible for sending kafka(default 1M)
   delay_time: 2 # waiting for reading channel when receive exit signals(default 2s)
 
@@ -20,6 +20,11 @@ fusion:
 kafka:
   brokers: ["192.168.0.4:9092"] # the kafka brokers
   topic: "TL-Trader" # the kafka topic
+
+redis:
+  passwd: "" # empty if no passwd set for redis
+  addr: "192.168.0.4:6379" # the address for redis
+  db: 0 # 0 - the default db of redis
 
 log:
   output_level: "info" # the log level with value in [debug, info, warn, error]

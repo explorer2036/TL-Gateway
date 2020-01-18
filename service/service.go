@@ -2,6 +2,7 @@ package report
 
 import (
 	"TL-Gateway/config"
+	"TL-Gateway/log"
 	"TL-Gateway/model"
 	"TL-Gateway/proto/gateway"
 	"context"
@@ -15,7 +16,7 @@ import (
 	"time"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
-	gcache "github.com/patrickmn/go-cache"
+	"github.com/go-redis/redis"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/peer"
 )
@@ -60,7 +61,7 @@ const (
 type Service struct {
 	gateway.UnimplementedServiceServer
 
-	cache        *gcache.Cache                // local cache for token
+	redisClient  *redis.Client                // redis for token cache
 	fusionClient *fusionauth.FusionAuthClient // fusion client for validate the token
 	settings     *config.Config               // settings for the gateway
 	stream       chan model.Carrier           // stream for buffering messages
@@ -74,8 +75,16 @@ func NewService(settings *config.Config) *Service {
 
 	s := &Service{settings: settings}
 
-	// init the local cache
-	s.cache = gcache.New(DefaultCacheExpireTime, DefaultCacheCleanTime)
+	// init the redis connection for token cache
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     settings.Redis.Addr,
+		Password: settings.Redis.Passwd, // no password
+		DB:       settings.Redis.DB,     // use default DB
+	})
+	// try to ping the redis
+	if _, err := redisClient.Ping().Result(); err != nil {
+		panic(err)
+	}
 
 	// init the fusion client
 	s.fusionClient = s.newFusionClient()
@@ -108,15 +117,19 @@ func (s *Service) md5Sum(data string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// validate the token with the local cache
+// validate the token with the redis cache
 func (s *Service) validateByCache(k string, v string) bool {
-	// check if the key is existed in local cache
-	if item, existed := s.cache.Get(k); existed {
-		// check if the value is valid
-		if item == v {
-			return true
-		}
+	// check if the key is existed in redis cache
+	token, err := s.redisClient.Get(k).Result()
+	if err != nil {
+		log.Errorf("redis get %s: %v", s, err)
+		return false
 	}
+	// check if the value is equal
+	if token == v {
+		return true
+	}
+
 	return false
 }
 
@@ -134,12 +147,16 @@ func (s *Service) validateByFusion(token string) (int64, error) {
 	return verify.Jwt.Exp, nil
 }
 
-// update the new token into the cache
+// update the new token into the redis cache
 func (s *Service) updateCache(k string, v string, expire int64) {
-	secs := time.Duration(expire - time.Now().Unix() + 1)
-	// set the token to local cache
-	s.cache.Set(k, v, secs*time.Second)
-
+	secs := expire - time.Now().Unix() - 60
+	if secs > 0 {
+		// set the token to redis cache
+		result := s.redisClient.Set(k, v, time.Duration(secs)*time.Second)
+		if result.Err() != nil {
+			log.Errorf("update the token %s: %v", v, result.Err())
+		}
+	}
 }
 
 // retrieve the peer address
@@ -193,10 +210,10 @@ func (s *Service) Login(ctx context.Context, request *gateway.LoginRequest) (*ga
 
 // Report implements gateway.Service
 func (s *Service) Report(ctx context.Context, request *gateway.ReportRequest) (*gateway.ReportReply, error) {
-	// md5 the login + application as key
-	k := s.md5Sum(request.LoginId + request.ApplicationId)
-	// md5 the token as value
-	v := s.md5Sum(request.Token)
+	// the login + application as key
+	k := request.LoginId + request.ApplicationId
+	// the token as value
+	v := request.Token
 
 	// validate the token by cache
 	if ok := s.validateByCache(k, v); ok {

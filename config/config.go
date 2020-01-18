@@ -25,6 +25,13 @@ type serverStruct struct {
 	CaFile     string        `yaml:"tls_ca"`
 }
 
+// redis fields
+type redisStruct struct {
+	Passwd string `yaml:"passwd"`
+	Addr   string `yaml:"addr"`
+	DB     int    `yaml:"db"`
+}
+
 // cache fields
 type cacheStruct struct {
 	Routines  int           `yaml:"routines"`
@@ -54,6 +61,7 @@ type Config struct {
 	Fusion fusionStruct `yaml:"fusion"`
 	Server serverStruct `yaml:"server"`
 	Cache  cacheStruct  `yaml:"cache"`
+	Redis  redisStruct  `yaml:"redis"`
 	Kafka  kafkaStruct  `yaml:"kafka"`
 	Log    logStruct    `yaml:"log"`
 }

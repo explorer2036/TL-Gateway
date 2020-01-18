@@ -42,9 +42,8 @@ const (
 type Engine struct {
 	producer *kafka.Producer // kafka producer for writing messages
 	service  *report.Service // report service with stream channel
-
-	settings *config.Config // settings for the gateway
-	ready    chan struct{}  // mark the goroutines are ready
+	settings *config.Config  // settings for the gateway
+	ready    chan struct{}   // mark the goroutines are ready
 }
 
 // NewEngine create a enginer for handling messages
