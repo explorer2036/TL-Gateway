@@ -15,12 +15,12 @@ relations:
     table: "trace"
     columns: ["type", "trace", "hop", "host", "latency"]
 # CREATE TABLE trace (
-# 			  source VARCHAR(100) NOT NULL,
-# 			  path VARCHAR(200) NOT NULL,
-#         type VARCHAR(20) NOT NULL,
-#         trace VARCHAR(100) NOT NULL,
-#         hop BOOLEAN NOT NULL,
-#         host VARCHAR(100) NOT NULL,
-#         latency INT NOT NULL,
-# 			  time TIMESTAMPTZ  NOT NULL,
-# 			);
+#   source VARCHAR(100) NOT NULL,
+#   path VARCHAR(200) NOT NULL,
+#   type VARCHAR(20) NOT NULL,
+#   trace VARCHAR(100) NOT NULL,
+#   hop BOOLEAN NOT NULL,
+#   host VARCHAR(100) NOT NULL,
+#   latency INT NOT NULL,
+#   time TIMESTAMPTZ  NOT NULL
+# );

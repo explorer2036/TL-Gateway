@@ -20,6 +20,7 @@ type serverStruct struct {
 	AdminAddr  string        `yaml:"admin_addr"`
 	Timeout    time.Duration `yaml:"timeout"`
 	TLSSwitch  bool          `yaml:"tls_switch"`
+	Cache      string        `yaml:"cache"`
 	PermFile   string        `yaml:"tls_perm"`
 	KeyFile    string        `yaml:"tls_key"`
 	CaFile     string        `yaml:"tls_ca"`

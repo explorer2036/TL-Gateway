@@ -1,8 +1,8 @@
 package report
 
 import (
+	"TL-Gateway/cache"
 	"TL-Gateway/config"
-	"TL-Gateway/log"
 	"TL-Gateway/model"
 	"TL-Gateway/proto/gateway"
 	"context"
@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
-	"github.com/go-redis/redis"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/peer"
 )
@@ -49,19 +48,13 @@ const (
 	DefaultFustionTimeout = 5
 	// DefaultStreamBuffer - queue size for goroutines which is responsible for sending kafka(default 1M)
 	DefaultStreamBuffer = 1024 * 1024
-	// DefaultWriteTimeout - the timeout for writing the messages to queue
-	DefaultWriteTimeout = 2
-	// DefaultCacheExpireTime - the default expire time for local cache
-	DefaultCacheExpireTime = 30
-	// DefaultCacheCleanTime - the default clean time for local cache
-	DefaultCacheCleanTime = 60
 )
 
 // Service represents the interfaces for gateway
 type Service struct {
 	gateway.UnimplementedServiceServer
 
-	redisClient  *redis.Client                // redis for token cache
+	tokenCache   cache.Cache                  // cache for the token
 	fusionClient *fusionauth.FusionAuthClient // fusion client for validate the token
 	settings     *config.Config               // settings for the gateway
 	stream       chan model.Carrier           // stream for buffering messages
@@ -75,17 +68,12 @@ func NewService(settings *config.Config) *Service {
 
 	s := &Service{settings: settings}
 
-	// init the redis connection for token cache
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     settings.Redis.Addr,
-		Password: settings.Redis.Passwd, // no password
-		DB:       settings.Redis.DB,     // use default DB
-	})
-	// try to ping the redis
-	if _, err := redisClient.Ping().Result(); err != nil {
-		panic(err)
+	// init the cache for token
+	if s.settings.Server.Cache == "redis" {
+		s.tokenCache = cache.NewRedisCache(settings)
+	} else {
+		s.tokenCache = cache.NewLocalCache()
 	}
-	s.redisClient = redisClient
 
 	// init the fusion client
 	s.fusionClient = s.newFusionClient()
@@ -118,22 +106,6 @@ func (s *Service) md5Sum(data string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// validate the token with the redis cache
-func (s *Service) validateByCache(k string, v string) bool {
-	// check if the key is existed in redis cache
-	token, err := s.redisClient.Get(k).Result()
-	if err != nil {
-		log.Errorf("redis get %s: %v", k, err)
-		return false
-	}
-	// check if the value is equal
-	if token == v {
-		return true
-	}
-
-	return false
-}
-
 // validate the token by fusion
 func (s *Service) validateByFusion(token string) (int64, error) {
 	// validate the token from fusion auth server
@@ -146,18 +118,6 @@ func (s *Service) validateByFusion(token string) (int64, error) {
 	}
 
 	return verify.Jwt.Exp, nil
-}
-
-// update the new token into the redis cache
-func (s *Service) updateCache(k string, v string, expire int64) {
-	secs := expire - time.Now().Unix() - 60
-	if secs > 0 {
-		// set the token to redis cache
-		result := s.redisClient.Set(k, v, time.Duration(secs)*time.Second)
-		if result.Err() != nil {
-			log.Errorf("update the token: %v", result.Err())
-		}
-	}
 }
 
 // retrieve the peer address
@@ -217,7 +177,7 @@ func (s *Service) validate(request *gateway.ReportRequest) error {
 	v := request.Token
 
 	// validate the token by cache
-	if ok := s.validateByCache(k, v); ok {
+	if ok := s.tokenCache.Check(k, v); ok {
 		return nil
 	}
 
@@ -227,8 +187,8 @@ func (s *Service) validate(request *gateway.ReportRequest) error {
 		return err
 	}
 
-	// update the local cache for the token
-	s.updateCache(k, v, expire)
+	// update the cache for the token
+	s.tokenCache.Set(k, v, expire)
 
 	return nil
 }

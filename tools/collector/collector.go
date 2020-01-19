@@ -16,9 +16,10 @@ import (
 )
 
 var (
-	address   = flag.String("a", "192.168.0.4:15001", "the grpc server address")
-	frequency = flag.Int("f", 500, "the collect frequency(ms)")
-	count     = flag.Int("c", -1, "the count of records")
+	address     = flag.String("a", "192.168.0.4:15001", "the grpc server address")
+	frequency   = flag.Int("f", 500, "the collect frequency(ms)")
+	count       = flag.Int("c", -1, "the count of records")
+	connections = flag.Int("s", 1, "the count of connections")
 )
 
 // login the fusion
@@ -99,12 +100,7 @@ func newNetworkTrace(i int) []byte {
 	return b
 }
 
-func main() {
-	flag.Parse()
-
-	// login the fusion to fetch the token
-	token := login()
-
+func do(token string) {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(*address, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
 	if err != nil {
@@ -112,15 +108,17 @@ func main() {
 	}
 	defer conn.Close()
 
-	c := gateway.NewReportServiceClient(conn)
+	c := gateway.NewServiceClient(conn)
 
 	i := 0
 	for {
 		i++
 
 		request := gateway.ReportRequest{
-			Token: token,
-			Data:  newNetworkTrace(i),
+			Token:         token,
+			LoginId:       "alon@traderlinked.com",
+			ApplicationId: "8af9b71b-5637-435c-9f4c-fb82e17dd114",
+			Data:          newNetworkTrace(i),
 		}
 		if _, err := c.Report(context.Background(), &request); err != nil {
 			fmt.Printf("report data: %v\n", err)
@@ -133,5 +131,16 @@ func main() {
 		if *count == i {
 			break
 		}
+	}
+}
+
+func main() {
+	flag.Parse()
+
+	// login the fusion to fetch the token
+	token := login()
+
+	for index := 0; index < *connections; index++ {
+		do(token)
 	}
 }
