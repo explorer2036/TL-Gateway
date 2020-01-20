@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
@@ -20,6 +23,8 @@ var (
 	frequency   = flag.Int("f", 500, "the collect frequency(ms)")
 	count       = flag.Int("c", -1, "the count of records")
 	connections = flag.Int("s", 1, "the count of connections")
+	dataType    = flag.String("t", "data_trace", "the data type(data_trace/data_quote)")
+	action      = flag.String("n", "insert", "the action of message(insert/update)")
 )
 
 // login the fusion
@@ -44,8 +49,8 @@ func login() string {
 
 // Metric:
 //     {
-//         "source": "fund-falconfund-nyc-mt4-5",
-//         "path": "alpari-brokerage.metatrader.app.cpu.pct",
+//         "source": "fund-falconfund",
+//         "path": "cpu.pct",
 //         "data": {value: [0.09]},
 //         "time": 15990932023
 //     }
@@ -62,6 +67,23 @@ func login() string {
 // 	time TIMESTAMPTZ  NOT NULL,
 // );
 
+type QuoteData struct {
+	Ticker string  `json:"ticker"`
+	Last   float32 `json:"last"`
+	Bid    float32 `json:"bid"`
+	Ask    float32 `json:"ask"`
+	Time   string  `json:"time"`
+}
+
+type NetworkQuote struct {
+	UserID string    `json:"userid"`
+	Source string    `json:"source"`
+	Path   string    `json:"path"`
+	Kind   string    `json:"dtype"`
+	Action string    `json:"action"`
+	Data   QuoteData `json:"data"`
+}
+
 type TraceData struct {
 	Type    string  `json:"type"`
 	Trace   string  `json:"trace"`
@@ -70,6 +92,7 @@ type TraceData struct {
 	Latency int     `json:"latency"`
 	Value   float32 `json:"value"`
 }
+
 type NetworkTrace struct {
 	Source string    `json:"source"`
 	Path   string    `json:"path"`
@@ -79,28 +102,48 @@ type NetworkTrace struct {
 	Time   string    `json:"time"`
 }
 
-func newNetworkTrace(i int) []byte {
+func newNetworkQuote(i int, kind string, action string) []byte {
+	quote := &NetworkQuote{
+		Kind:   kind,
+		Action: action,
+		UserID: "test@live.cn",
+		Source: "fund-falconfund-" + strconv.Itoa(i),
+		Path:   "trade.network.latency",
+		Data: QuoteData{
+			Ticker: "GBPNZD",
+			Last:   1.9717,
+			Bid:    1.9718,
+			Ask:    1.9719,
+			Time:   time.Now().Format("2006-02-01 15:04:05 +0800 CST"),
+		},
+	}
+
+	b, _ := json.Marshal(&quote)
+	return b
+}
+
+func newNetworkTrace(i int, kind string, action string) []byte {
 	trace := &NetworkTrace{
-		Kind:   "data_trace",
-		Action: "insert",
-		Source: "fund-falconfund-nyc-mt4-5-" + strconv.Itoa(i),
-		Path:   "alpari-brokerage.metatrader.app.trade.network.latency",
+		Kind:   kind,
+		Action: action,
+		Source: "fund-falconfund-" + strconv.Itoa(i),
+		Path:   "trade.network.latency",
 		Data: TraceData{
 			Type:    "ipv4",
 			Trace:   "alpari.london.trade.api -w 2000",
 			Hop:     true,
 			Host:    "alpari.london.trade.api [217.192.86.32]",
 			Latency: 10,
-			Value:   2.99792458e8,
+			Value:   2.997,
 		},
-		Time: "2015-01-12 12:45:00.345+08",
+		Time: time.Now().Format("2006-02-01 15:04:05 +0800 CST"),
 	}
 
 	b, _ := json.Marshal(&trace)
 	return b
 }
 
-func do(token string) {
+func do(token string, dtype string, action string) {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(*address, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
 	if err != nil {
@@ -114,14 +157,23 @@ func do(token string) {
 	for {
 		i++
 
+		var data []byte
+		if dtype == "data_trace" {
+			data = newNetworkTrace(i, dtype, action)
+		}
+		if dtype == "data_quote" {
+			data = newNetworkQuote(i, dtype, action)
+		}
+
 		request := gateway.ReportRequest{
 			Token:         token,
 			LoginId:       "alon@traderlinked.com",
 			ApplicationId: "8af9b71b-5637-435c-9f4c-fb82e17dd114",
-			Data:          newNetworkTrace(i),
+			Data:          data,
 		}
 		if _, err := c.Report(context.Background(), &request); err != nil {
 			fmt.Printf("report data: %v\n", err)
+			return
 		}
 
 		if *frequency > 0 {
@@ -137,10 +189,24 @@ func do(token string) {
 func main() {
 	flag.Parse()
 
+	if *dataType != "data_quote" && *dataType != "data_trace" {
+		panic("invalid data type")
+	}
+
 	// login the fusion to fetch the token
 	token := login()
 
 	for index := 0; index < *connections; index++ {
-		do(token)
+		go do(token, *dataType, *action)
+	}
+
+	sig := make(chan os.Signal, 1024)
+	// subscribe signals: SIGINT & SINGTERM
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	for {
+		select {
+		case <-sig:
+			return
+		}
 	}
 }
