@@ -3,7 +3,7 @@ module TL-Gateway
 go 1.12
 
 require (
-	github.com/FusionAuth/go-client v0.0.0-20200102154147-b8bdca016e1e
+	github.com/FusionAuth/go-client v0.0.0-20200123075844-ef7ffcc56cef
 	github.com/Shopify/sarama v1.24.1
 	github.com/emicklei/go-restful v2.11.1+incompatible
 	github.com/go-redis/redis v6.15.6+incompatible

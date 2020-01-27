@@ -1,8 +1,8 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/FusionAuth/go-client v0.0.0-20200102154147-b8bdca016e1e h1:2QlKb8/529q6l4PuVtTb2do21Z4A2NVGpcRbCp2ChUE=
-github.com/FusionAuth/go-client v0.0.0-20200102154147-b8bdca016e1e/go.mod h1:x5alHE36/KzvDMZ0xmOVyQbMMGT7Z4g9RVw57rLdv/M=
+github.com/FusionAuth/go-client v0.0.0-20200123075844-ef7ffcc56cef h1:YTuek/GlAvCbiLLqLx6MoraEskZKmqXdCxaCLw+t6F4=
+github.com/FusionAuth/go-client v0.0.0-20200123075844-ef7ffcc56cef/go.mod h1:x5alHE36/KzvDMZ0xmOVyQbMMGT7Z4g9RVw57rLdv/M=
 github.com/Shopify/sarama v1.24.1 h1:svn9vfN3R1Hz21WR2Gj0VW9ehaDGkiOS+VqlIcZOkMI=
 github.com/Shopify/sarama v1.24.1/go.mod h1:fGP8eQ6PugKEI0iUETYYtnP6d1pH/bdDMTel1X5ajsU=
 github.com/Shopify/toxiproxy v2.1.4+incompatible h1:TKdv8HiTLgE5wdJuEML90aBgNWsokNbMijUGhmcoBJc=

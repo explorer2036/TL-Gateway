@@ -1,14 +1,16 @@
-package report
+package internal
 
 import (
 	"TL-Gateway/cache"
 	"TL-Gateway/config"
 	"TL-Gateway/model"
 	"TL-Gateway/proto/gateway"
+	"TL-Gateway/proto/id"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,6 +19,8 @@ import (
 
 	"github.com/FusionAuth/go-client/pkg/fusionauth"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/peer"
 )
 
@@ -48,19 +52,29 @@ const (
 	DefaultFustionTimeout = 5
 	// DefaultStreamBuffer - queue size for goroutines which is responsible for sending kafka(default 1M)
 	DefaultStreamBuffer = 1024 * 1024
+	// GRPCClientDialTimeout - the timeout for client to dial the server
+	GRPCClientDialTimeout = 5
+	// GRPCClientKeepaliveTime - After a duration of this time if the client doesn't see any activity it
+	// pings the server to see if the transport is still alive.
+	GRPCClientKeepaliveTime = 15
+	// GRPCClientKeepaliveTimeout - After having pinged for keepalive check, the client waits for a duration
+	// of Timeout and if no activity is seen even after that the connection is closed.
+	GRPCClientKeepaliveTimeout = 5
 )
 
 // Service represents the interfaces for gateway
 type Service struct {
 	gateway.UnimplementedServiceServer
 
-	tokenCache   cache.Cache                  // cache for the token
-	fusionClient *fusionauth.FusionAuthClient // fusion client for validate the token
-	settings     *config.Config               // settings for the gateway
-	stream       chan model.Carrier           // stream for buffering messages
+	tokenCache      cache.Cache                  // cache for the token
+	idServiceConn   *grpc.ClientConn             // grpc connection for id service
+	idServiceClient id.ServiceClient             // id service client
+	fusionClient    *fusionauth.FusionAuthClient // fusion client for validate the token
+	settings        *config.Config               // settings for the gateway
+	stream          chan model.Carrier           // stream for buffering messages
 }
 
-// NewService create the report service
+// NewService create the internal service
 func NewService(settings *config.Config) *Service {
 	if settings.Cache.Buffer == 0 {
 		settings.Cache.Buffer = DefaultStreamBuffer
@@ -76,15 +90,40 @@ func NewService(settings *config.Config) *Service {
 	}
 
 	// init the fusion client
-	s.fusionClient = s.newFusionClient()
+	s.newFusionClient()
+	// init the id service client
+	s.initIDServiceClient()
+
 	// init the buffer queue
 	s.stream = make(chan model.Carrier, s.settings.Cache.Buffer)
 
 	return s
 }
 
+// init the id service client
+func (s *Service) initIDServiceClient() {
+	// prepare the dial options for grpc client
+	opts := []grpc.DialOption{}
+	opts = append(opts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:    GRPCClientKeepaliveTime * time.Second,
+		Timeout: GRPCClientKeepaliveTimeout * time.Second,
+	}))
+	opts = append(opts, grpc.WithInsecure())
+
+	// set up a connection to the id server.
+	conn, err := grpc.Dial(s.settings.Server.IDService, opts...)
+	if err != nil {
+		panic(fmt.Sprintf("grpc conn: %v", err))
+	}
+	// update the connection
+	s.idServiceConn = conn
+
+	// new id service client
+	s.idServiceClient = id.NewServiceClient(conn)
+}
+
 // new a fusion client
-func (s *Service) newFusionClient() *fusionauth.FusionAuthClient {
+func (s *Service) newFusionClient() {
 	client := &http.Client{
 		Timeout: s.settings.Fusion.Timeout * time.Second,
 	}
@@ -94,8 +133,7 @@ func (s *Service) newFusionClient() *fusionauth.FusionAuthClient {
 	if err != nil {
 		panic(err)
 	}
-
-	return fusionauth.NewClient(client, host, s.settings.Fusion.APIKey)
+	s.fusionClient = fusionauth.NewClient(client, host, s.settings.Fusion.APIKey)
 }
 
 // md5 the token
@@ -166,7 +204,73 @@ func (s *Service) Login(ctx context.Context, request *gateway.LoginRequest) (*ga
 	return &gateway.LoginReply{
 		Status: gateway.Status_Success,
 		Token:  response.Token,
+		UserID: response.User.Id,
 	}, nil
+}
+
+// dbd62208-d0ea-4a5a-9066-64d41e7dcedd
+// 8+4+4+4+12
+// for the uuid format, i 'll put the user id with 10 bytes replace the part "d0ea-4a5a-90"
+func id2uuid(id int32) string {
+	s := fmt.Sprintf("%010v", id)
+	// return fmt.Sprintf("%08v", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(100000000))
+	uuid := fmt.Sprintf("%08v-%s-%s-%s%02v-%012v",
+		rand.Int31n(100000000),
+		s[0:4],
+		s[4:8],
+		s[8:10],
+		rand.Int31n(100),
+		rand.Int63n(1000000000000),
+	)
+	return uuid
+}
+
+// register the user from fusion auth server
+func (s *Service) register(ctx context.Context, request *gateway.RegisterRequest, uuid string) error {
+	// prepare the register request
+	registrationRequest := fusionauth.RegistrationRequest{
+		GenerateAuthenticationToken:  false,
+		SendSetPasswordEmail:         false,
+		SkipRegistrationVerification: true,
+		Registration: fusionauth.UserRegistration{
+			ApplicationId: request.ApplicationId,
+		},
+		User: fusionauth.User{
+			SecureIdentity: fusionauth.SecureIdentity{
+				Password: request.Password,
+			},
+			Email: request.LoginId,
+		},
+	}
+	// make the registration with user information
+	registrationReply, _, err := s.fusionClient.Register(uuid, registrationRequest)
+	if err != nil {
+		return err
+	}
+	// register failed
+	if registrationReply.StatusCode != 200 {
+		return fmt.Errorf("http status code: %v", registrationReply.StatusCode)
+	}
+	return nil
+}
+
+// Register implements gateway.Service
+func (s *Service) Register(ctx context.Context, request *gateway.RegisterRequest) (*gateway.RegisterReply, error) {
+	// fetch the user id from id service
+	idReply, err := s.idServiceClient.Generate32Bit(ctx, &id.Generate32BitRequest{})
+	if err != nil {
+		return &gateway.RegisterReply{Status: gateway.Status_Error, Message: err.Error()}, nil
+	}
+
+	// format the uuid with an integer
+	uuid := id2uuid(idReply.Id)
+
+	// call the register api with user information
+	if err := s.register(ctx, request, uuid); err != nil {
+		return &gateway.RegisterReply{Status: gateway.Status_Error, Message: err.Error()}, nil
+	}
+
+	return &gateway.RegisterReply{Status: gateway.Status_Success, UserID: uuid}, nil
 }
 
 // validate the token with login and application id

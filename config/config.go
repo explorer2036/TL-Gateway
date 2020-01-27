@@ -18,12 +18,13 @@ type fusionStruct struct {
 type serverStruct struct {
 	ListenAddr string        `yaml:"listen_addr"`
 	AdminAddr  string        `yaml:"admin_addr"`
+	IDService  string        `yaml:"id_service"`
 	Timeout    time.Duration `yaml:"timeout"`
-	TLSSwitch  bool          `yaml:"tls_switch"`
 	Cache      string        `yaml:"cache"`
-	PermFile   string        `yaml:"tls_perm"`
-	KeyFile    string        `yaml:"tls_key"`
-	CaFile     string        `yaml:"tls_ca"`
+	Switch     bool          `yaml:"tls_switch"`
+	Perm       string        `yaml:"tls_perm"`
+	Key        string        `yaml:"tls_key"`
+	Ca         string        `yaml:"tls_ca"`
 }
 
 // redis fields
@@ -44,6 +45,10 @@ type cacheStruct struct {
 type kafkaStruct struct {
 	Brokers []string `yaml:"brokers"`
 	Topic   string   `yaml:"topic"`
+	Switch  bool     `yaml:"tls_switch"`
+	Perm    string   `yaml:"tls_perm"`
+	Key     string   `yaml:"tls_key"`
+	Ca      string   `yaml:"tls_ca"`
 }
 
 // log fields

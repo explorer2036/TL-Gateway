@@ -4,7 +4,7 @@ import (
 	"TL-Gateway/config"
 	"TL-Gateway/kafka"
 	"TL-Gateway/log"
-	"TL-Gateway/service"
+	"TL-Gateway/internal"
 	"context"
 	"sync"
 	"time"
@@ -41,13 +41,13 @@ const (
 // Engine is used to implement gateway.Engine.
 type Engine struct {
 	producer *kafka.Producer // kafka producer for writing messages
-	service  *report.Service // report service with stream channel
+	service  *internal.Service // internal service with stream channel
 	settings *config.Config  // settings for the gateway
 	ready    chan struct{}   // mark the goroutines are ready
 }
 
 // NewEngine create a enginer for handling messages
-func NewEngine(settings *config.Config, producer *kafka.Producer, service *report.Service) *Engine {
+func NewEngine(settings *config.Config, producer *kafka.Producer, service *internal.Service) *Engine {
 	if settings.Cache.Routines == 0 {
 		settings.Cache.Routines = DefaultNumberOfRoutines
 	}

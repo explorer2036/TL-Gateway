@@ -1,12 +1,13 @@
 server:
   listen_addr: "0.0.0.0:15001" # the grpc listen address
   admin_addr: "0.0.0.0:8002" # the admin entrypoint for prometheus and pprof
+  id_service: "192.168.0.4:15002" # the id service address
   timeout: 2 # the timeout for writing the messages to queue
-  tls_switch: false # the switch for the ca certification(default closed)
   cache: "local" # the cache type for token validation: local or redis
-  tls_perm: "cert/server.pem" # the perm file for ca certification in grpc server
-  tls_key: "cert/server.key" # the key file for ca certification in grpc server
-  tls_ca: "cert/ca.pem" # the ca file for ca certification in grpc server
+  tls_switch: false # the switch for the ca certification(default closed)
+  tls_perm: "certs/gateway/server.pem" # the perm file for ca certification in grpc server
+  tls_key: "certs/gateway/server.key" # the key file for ca certification in grpc server
+  tls_ca: "certs/gateway/ca.pem" # the ca file for ca certification in grpc server
 
 cache:
   routines: 10 # number of the goroutines, for sending messages to kafka(default 10)
@@ -21,6 +22,10 @@ fusion:
 kafka:
   brokers: ["192.168.0.4:9092"] # the kafka brokers
   topic: "TL-Trader" # the kafka topic
+  tls_switch: false # the switch for the ca certification(default closed)
+  tls_perm: "certs/kafka/client.pem" # the perm file for ca certification in kafka
+  tls_key: "certs/kafka/client.key" # the key file for ca certification in kafka
+  tls_ca: "certs/kafka/ca.pem" # the ca file for ca certification in kafka
 
 redis:
   passwd: "" # empty if no passwd set for redis

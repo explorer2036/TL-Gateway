@@ -6,8 +6,8 @@ import (
 	"TL-Gateway/kafka"
 	"TL-Gateway/log"
 	"TL-Gateway/proto/gateway"
-	"TL-Gateway/service"
 	"TL-Gateway/server"
+	"TL-Gateway/internal"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -37,13 +37,13 @@ var kaep = keepalive.EnforcementPolicy{
 
 // prepare the files for certification
 func createCredentials(settings *config.Config) credentials.TransportCredentials {
-	cert, err := tls.LoadX509KeyPair(settings.Server.PermFile, settings.Server.KeyFile)
+	cert, err := tls.LoadX509KeyPair(settings.Server.Perm, settings.Server.Key)
 	if err != nil {
 		panic(err)
 	}
 
 	certPool := x509.NewCertPool()
-	ca, err := ioutil.ReadFile(settings.Server.CaFile)
+	ca, err := ioutil.ReadFile(settings.Server.Ca)
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +60,7 @@ func createCredentials(settings *config.Config) credentials.TransportCredentials
 }
 
 // start a grpc server
-func startGRPCServer(settings *config.Config, rs *report.Service, wg *sync.WaitGroup) (*grpc.Server, error) {
+func startGRPCServer(settings *config.Config, rs *internal.Service, wg *sync.WaitGroup) (*grpc.Server, error) {
 	lis, err := net.Listen("tcp", settings.Server.ListenAddr)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func startGRPCServer(settings *config.Config, rs *report.Service, wg *sync.WaitG
 
 	var s *grpc.Server
 	// must support the keepalive
-	if settings.Server.TLSSwitch {
+	if settings.Server.Switch {
 		// create credentials by loading the cert files
 		creds := createCredentials(settings)
 		s = grpc.NewServer(grpc.Creds(creds), grpc.KeepaliveEnforcementPolicy(kaep))
@@ -130,8 +130,8 @@ func main() {
 
 	// create a kafka producer
 	producer := kafka.NewProducer(&settings)
-	// create a report service for grpc server
-	service := report.NewService(&settings)
+	// create a internal service for grpc server
+	service := internal.NewService(&settings)
 
 	// create the engine for handling the messages
 	enginer := engine.NewEngine(&settings, producer, service)

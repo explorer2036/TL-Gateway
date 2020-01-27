@@ -1,6 +1,6 @@
 # github.com/BurntSushi/toml v0.3.1
 github.com/BurntSushi/toml
-# github.com/FusionAuth/go-client v0.0.0-20200102154147-b8bdca016e1e
+# github.com/FusionAuth/go-client v0.0.0-20200123075844-ef7ffcc56cef
 github.com/FusionAuth/go-client/pkg/fusionauth
 # github.com/Shopify/sarama v1.24.1
 github.com/Shopify/sarama
