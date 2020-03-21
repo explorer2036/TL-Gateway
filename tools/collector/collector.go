@@ -24,14 +24,14 @@ var (
 	connections = flag.Int("s", 1, "the count of connections")
 	dataType    = flag.String("t", "data_trace", "the data type(data_trace/data_quote)")
 	action      = flag.String("n", "insert", "the action of message(insert/update)")
-	loginid     = flag.String("u", "aqliodlong@126.com", "the username for fusion")
-	password    = flag.String("p", "XjsAZxOajA", "the password for fusion")
+	loginid     = flag.String("u", "alonlong@126.com", "the username for fusion")
+	password    = flag.String("p", "1qaz@wsx", "the password for fusion")
 )
 
 // login the fusion
 func login(loginid string, password string) (string, string) {
-	apiKey := "Kc-ntFUr767Qyk0RgbVU8dxLLdjmTM98_XjsAZxOajA"
-	baseURL, _ := url.Parse("http://209.222.106.245:9011/")
+	apiKey := "gpxAG9Yk1_3xkItITC35rXP2zVdbsdk_bep69TWkGC8"
+	baseURL, _ := url.Parse("http://209.159.148.254:9011/")
 	httpClient := &http.Client{Timeout: time.Second * 5}
 	auth := fusionauth.NewClient(httpClient, baseURL, apiKey)
 

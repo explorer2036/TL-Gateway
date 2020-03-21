@@ -15,7 +15,7 @@ var (
 	// apiKey = "Kc-ntFUr767Qyk0RgbVU8dxLLdjmTM98_XjsAZxOajA"
 	// apiKey     = "cIoPv09UNR2qhd4OrHDbq1x1qeHpZpumUMvIAuWO0no"
 	apiKey      = "gpxAG9Yk1_3xkItITC35rXP2zVdbsdk_bep69TWkGC8"
-	baseURL, _  = url.Parse("http://209.222.106.245:9011/")
+	baseURL, _  = url.Parse("http://209.159.148.254:9011/")
 	httpClient  = &http.Client{Timeout: time.Second * 5}
 	auth        = fusionauth.NewClient(httpClient, baseURL, apiKey)
 	application = "8af9b71b-5637-435c-9f4c-fb82e17dd114"

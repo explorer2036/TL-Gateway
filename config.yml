@@ -15,8 +15,8 @@ cache:
   delay_time: 2 # waiting for reading channel when receive exit signals(default 2s)
 
 fusion:
-  api_key: "Kc-ntFUr767Qyk0RgbVU8dxLLdjmTM98_XjsAZxOajA" # api key for authorizing the user token
-  api_url: "http://209.222.106.245:9011/" # api url for authorizing the user token
+  api_key: "gpxAG9Yk1_3xkItITC35rXP2zVdbsdk_bep69TWkGC8" # api key for authorizing the user token
+  api_url: "http://209.159.148.254:9011/" # api url for authorizing the user token
   timeout: 5 # timeout for requesting the fusion api
 
 kafka:

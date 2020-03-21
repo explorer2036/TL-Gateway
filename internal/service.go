@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -201,11 +202,34 @@ func (s *Service) Login(ctx context.Context, request *gateway.LoginRequest) (*ga
 		return &gateway.LoginReply{Status: gateway.Status_Refused, Message: err.Error()}, nil
 	}
 
+	// fetch the source from id service
+	result, err := s.idServiceClient.GetSource(ctx, &id.GetSourceRequest{Id: uuid2id(response.User.Id)})
+	if err != nil {
+		return &gateway.LoginReply{Status: gateway.Status_Error, Message: err.Error()}, nil
+	}
+
 	return &gateway.LoginReply{
 		Status: gateway.Status_Success,
 		Token:  response.Token,
 		UserID: response.User.Id,
+		Source: result.Source,
 	}, nil
+}
+
+// dbd62208-d0ea-4a5a-9066-64d41e7dcedd
+// 8+4+4+4+12
+// for the uuid format, i will put the user id with 10 bytes replace the part "d0ea-4a5a-90"
+func uuid2id(uuid string) int32 {
+	if len(uuid) != 36 {
+		panic(uuid)
+	}
+
+	out := strings.Replace(uuid[9:21], "-", "", -1)
+	id, err := strconv.Atoi(out)
+	if err != nil {
+		panic(err)
+	}
+	return int32(id)
 }
 
 // dbd62208-d0ea-4a5a-9066-64d41e7dcedd
@@ -270,7 +294,7 @@ func (s *Service) Register(ctx context.Context, request *gateway.RegisterRequest
 		return &gateway.RegisterReply{Status: gateway.Status_Error, Message: err.Error()}, nil
 	}
 
-	return &gateway.RegisterReply{Status: gateway.Status_Success, UserID: uuid}, nil
+	return &gateway.RegisterReply{Status: gateway.Status_Success}, nil
 }
 
 // validate the token with login and application id
